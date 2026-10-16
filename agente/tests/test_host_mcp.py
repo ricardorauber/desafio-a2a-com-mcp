@@ -112,6 +112,7 @@ async def test_full_cycle_against_the_real_mcp_server():
         if r["body"]["method"] == "resources/read":
             assert r["headers"]["mcp-name"] == "politica://uso"
     assert len({r["body"]["params"]["_meta"]["traceparent"] for r in captura.requests}) == len(captura.requests)
+    assert len({r["body"]["id"] for r in captura.requests}) == len(captura.requests)
 
 
 async def test_protocol_error_and_unreachable_server():

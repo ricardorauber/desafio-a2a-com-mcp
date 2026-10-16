@@ -20,10 +20,10 @@ Turn the MCP server's `input_required` into a paused A2A Task, keep the `request
 - R7: The trace id of a Task SHALL be the one taken when the Task was opened; every MCP request of that Task, including the retry, SHALL use it.
 
 ## Acceptance criteria
-- [ ] AC1: Validator checks 27-34 and 36 pass. (R1-R6)
-- [ ] AC2: The manual flow with `exemplos/wire/08-a2a-send-message.json` pauses with `alternativas: sala-fusca, sala-mirante`; `escolha=sala-mirante` completes with an artifact pointing to `sala-mirante` with `politica`; repeating and answering `escolha=recusar` ends `TASK_STATE_CANCELED`. (R1, R3, R5)
-- [ ] AC3: In the MCP server stderr, the two `tools/call` of a paused-then-resumed reservation have different ids and the same trace id. (R4, R7)
-- [ ] AC4: No A2A response body contains any prefix of the `requestState`. (R2)
+- [x] AC1: Validator checks 27-34 and 36 pass. (R1-R6)
+- [x] AC2: The manual flow with `exemplos/wire/08-a2a-send-message.json` pauses with `alternativas: sala-fusca, sala-mirante`; `escolha=sala-mirante` completes with an artifact pointing to `sala-mirante` with `politica`; repeating and answering `escolha=recusar` ends `TASK_STATE_CANCELED`. (R1, R3, R5)
+- [x] AC3: In the MCP server stderr, the two `tools/call` of a paused-then-resumed reservation have different ids and the same trace id. (R4, R7)
+- [x] AC4: No A2A response body contains any prefix of the `requestState`. (R2)
 
 ## Unit tests
 - T1: pause message format, including a single alternative (R1).

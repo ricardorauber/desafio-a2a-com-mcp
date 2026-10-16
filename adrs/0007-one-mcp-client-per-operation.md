@@ -15,4 +15,4 @@ Spec 0005 allowed one long-lived `Client`. With `mcp` 2.3.0, a connection error 
 B, following the standing instruction to take the recommended option. Every operation starts with its own `tools/list` (carrying the Task's `traceparent`), which also primes the schema cache so the SDK never re-lists without trace context.
 
 ## Consequences
-JSON-RPC ids restart per client: the initial `tools/call` of a Task is id 3 (after `tools/list` and `resources/read`) and its retry is id 2 (after `tools/list`), so they always differ; requests are told apart in the MCP log by their trace id.
+JSON-RPC ids would restart at 1 per client, so each client's dispatcher starts from a process-wide block (`101, 102, 103`, then `201, 202`, ...), keeping every id unique in the MCP log; this touches the dispatcher's private counter of the pinned SDK version and is covered by a test asserting unique ids.

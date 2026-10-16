@@ -1,4 +1,4 @@
-"""The agent as MCP host: one SDK client, runtime discovery and the raw MRTR view.
+"""The agent as MCP host: SDK clients, runtime discovery and the raw MRTR view.
 
 This layer translates protocol only. Room rules (conflicts, policy, which rooms
 are offered) are decided by the MCP server; `request_state` is carried as an
@@ -7,9 +7,10 @@ opaque string and never opened.
 
 from __future__ import annotations
 
+import itertools
 import logging
-from contextlib import AsyncExitStack
 from collections.abc import Awaitable, Callable
+from contextlib import AsyncExitStack
 from dataclasses import dataclass, field
 from typing import Any, Union
 
@@ -27,6 +28,7 @@ from mcp_types import (
 
 from mcp import Client
 from mcp.client.session import ClientSession
+from mcp.shared.jsonrpc_dispatcher import JSONRPCDispatcher
 from mcp.shared.exceptions import MCPError
 
 from agente_a2a.trace import traceparent_filho
@@ -42,6 +44,8 @@ SO_FORMULARIO = ElicitationCapability(form=FormElicitationCapability())
 FERRAMENTA_AUSENTE = f"Ferramenta {FERRAMENTA} nao encontrada no servidor MCP"
 SERVIDOR_INDISPONIVEL = "Servidor MCP indisponivel"
 ENTRADA_INESPERADA = "Pedido de entrada inesperado do servidor MCP"
+IDS_POR_OPERACAO = 100
+_blocos_de_ids = itertools.count(1)
 
 
 @dataclass(frozen=True)
@@ -96,6 +100,10 @@ class _ClienteSoFormulario(Client):
         sessao = await super()._build_session(exit_stack)
         original = sessao._build_capabilities
         sessao._build_capabilities = lambda versao: capacidades_so_formulario(original(versao))  # type: ignore[method-assign]
+        # Each operation opens its own client, whose ids would restart at 1; a
+        # process-wide block per operation keeps every JSON-RPC id unique in the log.
+        if isinstance(sessao._dispatcher, JSONRPCDispatcher):
+            sessao._dispatcher._next_id = next(_blocos_de_ids) * IDS_POR_OPERACAO
         return sessao
 
 

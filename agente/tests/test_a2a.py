@@ -54,6 +54,7 @@ def test_tool_and_protocol_failures_end_failed_with_the_text_in_history(a2a_com)
         resposta = a2a.enviar(PEDIDO)
         assert estado(resposta) == "TASK_STATE_FAILED"
         assert mensagem(resposta) == esperado
+        assert [p["text"] for m in tarefa(resposta)["history"] for p in m["parts"]].count(esperado) == 1
         historico = tarefa(a2a.obter(tarefa(resposta)["id"]))["history"]
         textos = [p["text"] for m in historico for p in m["parts"]]
         assert textos.count(esperado) == 1
