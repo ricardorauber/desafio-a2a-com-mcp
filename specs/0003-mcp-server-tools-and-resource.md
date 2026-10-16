@@ -20,11 +20,11 @@ Serve the room domain as a stateless MCP server over Streamable HTTP (revision `
 - R10: All three tools SHALL have a description in Brazilian Portuguese.
 
 ## Acceptance criteria
-- [ ] AC1: `tools/list` on `http://127.0.0.1:7301/mcp` returns the three tools, each with an `inputSchema` of `type: object`. (R1, R9)
-- [ ] AC2: Validator checks 01-12 pass. (R2, R4-R8)
-- [ ] AC3: A request without `_meta` gets HTTP 400 / `-32602` and still produces a stderr line with its method and id. (R2, R3)
-- [ ] AC4: A request with `_meta.traceparent` produces a stderr line containing that exact value. (R3)
-- [ ] AC5: `reservar_sala` for `sala-aquario` 09:00–10:00 on 2026-11-03 returns `reservado: true`, `reserva: res-0003`, `politica: 2026-11-01`. (R9)
+- [x] AC1: `tools/list` on `http://127.0.0.1:7301/mcp` returns the three tools, each with an `inputSchema` of `type: object`. (R1, R9)
+- [x] AC2: Validator checks 01-12 pass. (R2, R4-R8)
+- [x] AC3: A request without `_meta` gets HTTP 400 / `-32602` and still produces a stderr line with its method and id. (R2, R3)
+- [x] AC4: A request with `_meta.traceparent` produces a stderr line containing that exact value. (R3)
+- [x] AC5: `reservar_sala` for `sala-aquario` 09:00–10:00 on 2026-11-03 returns `reservado: true`, `reserva: res-0003`, `politica: 2026-11-01`. (R9)
 
 ## Unit tests
 - T1: in-process (Starlette test client) `tools/list` returns three tools with object input schemas and the `listar_salas` output schema (AC1).
