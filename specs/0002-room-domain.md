@@ -22,12 +22,12 @@ Give the MCP server one small, pure domain module that loads the starter data an
 - R7: The store SHALL NOT persist anything to disk.
 
 ## Acceptance criteria
-- [ ] AC1: The loaded policy version is `2026-11-01` and the five rooms load with their capacities. (R1)
-- [ ] AC2: Each of the four validation messages is produced, with the exact text, for `sala-delorean`; 07:00–08:00; 09:00–12:00; 10:00–09:00. (R2)
-- [ ] AC3: `sala-garagem` 14:00–15:00 on 2026-11-03 conflicts with `res-0001`; 15:00–16:00 does not. (R3, R4)
-- [ ] AC4: Alternatives for `sala-garagem` 14:00–15:00 are `["sala-fusca", "sala-mirante"]`; for `sala-aquario` with every room taken except two larger ones they are sorted by capacity then id; never more than three. (R5)
-- [ ] AC5: A created reservation gets `res-0003`, the next one `res-0004`, and both show up as conflicts afterwards. (R6)
-- [ ] AC6: A reservation in the past (e.g. 2020-01-01) is accepted. (R6)
+- [x] AC1: The loaded policy version is `2026-11-01` and the five rooms load with their capacities. (R1)
+- [x] AC2: Each of the four validation messages is produced, with the exact text, for `sala-delorean`; 07:00–08:00; 09:00–12:00; 10:00–09:00. (R2)
+- [x] AC3: `sala-garagem` 14:00–15:00 on 2026-11-03 conflicts with `res-0001`; 15:00–16:00 does not. (R3, R4)
+- [x] AC4: Alternatives for `sala-garagem` 14:00–15:00 are `["sala-fusca", "sala-mirante"]`; for `sala-aquario` with every room taken except two larger ones they are sorted by capacity then id; never more than three. (R5)
+- [x] AC5: A created reservation gets `res-0003`, the next one `res-0004`, and both show up as conflicts afterwards. (R6)
+- [x] AC6: A reservation in the past (e.g. 2020-01-01) is accepted. (R6)
 
 ## Unit tests
 - T1: data loading and policy version extraction (AC1).
