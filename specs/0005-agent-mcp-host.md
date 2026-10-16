@@ -23,11 +23,11 @@ Give the agent an MCP client layer that talks to the MCP server over HTTP like a
 - R8: WHEN the caller provides a trace id, every MCP request of that operation SHALL carry `_meta.traceparent` `00-<same trace-id>-<new 16-hex span-id>-01`; WHEN the inbound `traceparent` is absent or malformed, a new random trace id SHALL be generated for the Task.
 
 ## Acceptance criteria
-- [ ] AC1: Against the running MCP server, the server's stderr shows `tools/list` before the first `tools/call` issued by the host, all with the same trace id. (R3, R8)
-- [ ] AC2: The captured request bodies show `clientCapabilities` equal to `{"elicitation": {"form": {}}}` and the mirrored headers. (R2)
-- [ ] AC3: A conflicting reservation returns `Pausada` with key `escolha_de_sala` and alternatives `["sala-fusca", "sala-mirante"]`; the retry with `sala-fusca` returns `Concluida` and its JSON-RPC id differs from the first call's. (R5, R6)
-- [ ] AC4: `sala-delorean` returns `FalhaFerramenta` whose text contains `Sala inexistente: sala-delorean`. (R5)
-- [ ] AC5: The policy version read is `2026-11-01`. (R4)
+- [x] AC1: Against the running MCP server, the server's stderr shows `tools/list` before the first `tools/call` issued by the host, all with the same trace id. (R3, R8)
+- [x] AC2: The captured request bodies show `clientCapabilities` equal to `{"elicitation": {"form": {}}}` and the mirrored headers. (R2)
+- [x] AC3: A conflicting reservation returns `Pausada` with key `escolha_de_sala` and alternatives `["sala-fusca", "sala-mirante"]`; the retry with `sala-fusca` returns `Concluida` and its JSON-RPC id differs from the first call's. (R5, R6)
+- [x] AC4: `sala-delorean` returns `FalhaFerramenta` whose text contains `Sala inexistente: sala-delorean`. (R5)
+- [x] AC5: The policy version read is `2026-11-01`. (R4)
 
 ## Unit tests
 - T1: `traceparent` parsing — valid header keeps the trace id; invalid/absent generates a new one; child span ids are 16 hex chars and differ per call (R8).
