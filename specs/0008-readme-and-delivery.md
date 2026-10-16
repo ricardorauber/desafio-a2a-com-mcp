@@ -17,11 +17,11 @@ Replace the starter README with the delivery documentation, prove the whole flow
 - R7: The delivery SHALL be on `main` of `ricardorauber/desafio-a2a-com-mcp`, with `dados/`, `validador/` and `exemplos/` unchanged.
 
 ## Acceptance criteria
-- [ ] AC1: Following only the README in a fresh clone in a temporary folder, the validator ends with `resumo: 36 passaram, 0 falharam` and exit code 0. (R2, R5)
-- [ ] AC2: The README has the four section headings of R1. (R1)
-- [ ] AC3: The README references existing file paths and function names for the bridge. (R3)
-- [ ] AC4: Evaluator steps 3-13 pass and their evidence (stderr lines with trace id, distinct retry ids) is recorded in the build notes. (R6)
-- [ ] AC5: `git diff --stat 263f17e -- dados validador exemplos` is empty on `origin/main`. (R7)
+- [x] AC1: Following only the README in a fresh clone in a temporary folder, the validator ends with `resumo: 36 passaram, 0 falharam` and exit code 0. (R2, R5)
+- [x] AC2: The README has the four section headings of R1. (R1)
+- [x] AC3: The README references existing file paths and function names for the bridge. (R3)
+- [x] AC4: Evaluator steps 3-13 pass and their evidence (stderr lines with trace id, distinct retry ids) is recorded in the build notes. (R6)
+- [x] AC5: `git diff --stat 263f17e -- dados validador exemplos` is empty on `origin/main`. (R7)
 
 ## Unit tests
 - T1: none — this spec is verified end to end by AC1-AC5.
