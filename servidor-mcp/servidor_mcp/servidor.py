@@ -2,19 +2,37 @@
 
 from __future__ import annotations
 
+import json
+from typing import Any
+
+from mcp_types import (
+    MISSING_REQUIRED_CLIENT_CAPABILITY,
+    ClientCapabilities,
+    ElicitationCapability,
+    ElicitRequest,
+    ElicitRequestFormParams,
+    ElicitResult,
+    FormElicitationCapability,
+    InputRequiredResult,
+    MissingRequiredClientCapabilityErrorData,
+)
 from pydantic import BaseModel
 from starlette.types import ASGIApp
 
-from mcp.server.mcpserver import MCPServer
+from mcp.server.mcpserver import Context, MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.server.request_state import RequestStateSecurity
+from mcp.shared.exceptions import MCPError
 
-from servidor_mcp.dominio import Agenda, ErroDeDominio
+from servidor_mcp.dominio import ERRO_SEM_ALTERNATIVAS, Agenda, ErroDeDominio
 from servidor_mcp.log import RegistroDeRequests
 
 NOME = "central-de-salas"
 VERSAO = "1.0.0"
 URI_POLITICA = "politica://uso"
+CHAVE_ESCOLHA = "escolha_de_sala"
+PERGUNTA = "A sala pedida esta ocupada nesse intervalo. Escolha uma alternativa."
+MOTIVOS_DE_RECUSA = {"decline": "recusado", "cancel": "cancelado"}
 
 
 class SalaOut(BaseModel):
@@ -76,9 +94,7 @@ def criar_servidor(agenda: Agenda, seguranca: RequestStateSecurity | None = None
             conflitos=[ConflitoOut(id=r.id, inicio=r.inicio, fim=r.fim, responsavel=r.responsavel) for r in conflitos],
         )
 
-    @mcp.tool(description="Reserva uma sala. Se o intervalo estiver ocupado, pergunta qual alternativa usar.")
-    def reservar_sala(sala: str, inicio: str, fim: str, responsavel: str) -> ReservaOut:
-        validar(sala, inicio, fim)
+    def concluir(sala: str, inicio: str, fim: str, responsavel: str) -> ReservaOut:
         reserva = agenda.reservar(sala, inicio, fim, responsavel)
         return ReservaOut(
             reserva=reserva.id,
@@ -89,11 +105,81 @@ def criar_servidor(agenda: Agenda, seguranca: RequestStateSecurity | None = None
             politica=agenda.versao_politica,
         )
 
+    def perguntar(pedido: dict[str, str], alternativas: list[str], ctx: Context) -> InputRequiredResult:
+        """End this round asking the client to pick an alternative; the whole request travels in the state."""
+        if not alternativas:
+            raise ToolError(ERRO_SEM_ALTERNATIVAS)
+        exigir_elicitation_em_form(ctx)
+        esquema = {
+            "type": "object",
+            "properties": {
+                "sala": {
+                    "type": "string",
+                    "title": "Sala",
+                    "description": "Sala alternativa escolhida",
+                    "enum": alternativas,
+                }
+            },
+            "required": ["sala"],
+        }
+        estado = {"pedido": pedido, "alternativas": alternativas, "chave": CHAVE_ESCOLHA}
+        return InputRequiredResult(
+            input_requests={
+                CHAVE_ESCOLHA: ElicitRequest(params=ElicitRequestFormParams(message=PERGUNTA, requested_schema=esquema))
+            },
+            # Plaintext here; the SDK request-state boundary seals it on the way out.
+            request_state=json.dumps(estado),
+        )
+
+    def retomar(estado: dict[str, Any], ctx: Context) -> ReservaOut | InputRequiredResult:
+        """Finish a request rebuilt from the verified state; the re-sent arguments are never used."""
+        pedido, alternativas = estado["pedido"], estado["alternativas"]
+        resposta = (ctx.input_responses or {}).get(estado["chave"])
+        if not isinstance(resposta, ElicitResult):
+            return perguntar(pedido, alternativas, ctx)
+        if resposta.action in MOTIVOS_DE_RECUSA:
+            return ReservaOut(reservado=False, motivo=MOTIVOS_DE_RECUSA[resposta.action])
+        escolhida = (resposta.content or {}).get("sala")
+        if escolhida not in alternativas:
+            return perguntar(pedido, alternativas, ctx)
+        intervalo = validar(escolhida, pedido["inicio"], pedido["fim"])
+        if agenda.conflitos(escolhida, intervalo):
+            return perguntar(pedido, agenda.alternativas(pedido["sala"], intervalo), ctx)
+        return concluir(escolhida, pedido["inicio"], pedido["fim"], pedido["responsavel"])
+
+    @mcp.tool(description="Reserva uma sala. Se o intervalo estiver ocupado, pergunta qual alternativa usar.")
+    def reservar_sala(
+        sala: str, inicio: str, fim: str, responsavel: str, ctx: Context
+    ) -> ReservaOut | InputRequiredResult:
+        if ctx.request_state is not None:
+            return retomar(json.loads(ctx.request_state), ctx)
+        intervalo = validar(sala, inicio, fim)
+        if agenda.conflitos(sala, intervalo):
+            pedido = {"sala": sala, "inicio": inicio, "fim": fim, "responsavel": responsavel}
+            return perguntar(pedido, agenda.alternativas(sala, intervalo), ctx)
+        return concluir(sala, inicio, fim, responsavel)
+
     @mcp.resource(URI_POLITICA, name="politica-de-uso", description="Politica de uso das salas.", mime_type="text/markdown")
     def politica() -> str:
         return agenda.politica
 
     return mcp
+
+
+def exigir_elicitation_em_form(ctx: Context) -> None:
+    """Refuse with -32021 a client that did not declare form-mode elicitation in this request."""
+    capacidades = ctx.client_capabilities
+    elicitation = capacidades.elicitation if capacidades is not None else None
+    if elicitation is not None and elicitation.form is not None:
+        return
+    exigidas = ClientCapabilities(elicitation=ElicitationCapability(form=FormElicitationCapability()))
+    raise MCPError(
+        code=MISSING_REQUIRED_CLIENT_CAPABILITY,
+        message="O cliente nao declarou a capability de elicitation em form mode exigida por reservar_sala",
+        data=MissingRequiredClientCapabilityErrorData(required_capabilities=exigidas).model_dump(
+            by_alias=True, mode="json", exclude_none=True
+        ),
+    )
 
 
 def criar_app(agenda: Agenda | None = None, seguranca: RequestStateSecurity | None = None) -> ASGIApp:

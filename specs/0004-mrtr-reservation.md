@@ -23,13 +23,13 @@ When the requested room is taken, `reservar_sala` finishes its response asking f
 - R10: The retry SHALL succeed after the server process restarts, as long as the same `REQUEST_STATE_SECRET` is used and the token has not expired.
 
 ## Acceptance criteria
-- [ ] AC1: Validator checks 13-20 pass. (R1-R4, R8, R9)
-- [ ] AC2: `sala-garagem` 14:00–15:00 on 2026-11-03 yields `input_required` with one `escolha_de_sala` entry, `mode: form` and enum `["sala-fusca", "sala-mirante"]`. (R2)
-- [ ] AC3: Changing one character of the `requestState` gives `-32602`. (R8)
-- [ ] AC4: Restarting the server between `input_required` and the retry still completes the reservation. (R10)
-- [ ] AC5: Starting without `REQUEST_STATE_SECRET`, or with a 16-byte value, exits non-zero with the guidance message. (R7)
-- [ ] AC6: `grep -rn "REQUEST_STATE_SECRET" servidor-mcp` shows only environment reads, docs and tests that generate a random value. (R7)
-- [ ] AC7: `decline` returns `reservado: false`, `motivo: "recusado"`, no `isError`, and the room stays free. (R9)
+- [x] AC1: Validator checks 13-20 pass. (R1-R4, R8, R9)
+- [x] AC2: `sala-garagem` 14:00–15:00 on 2026-11-03 yields `input_required` with one `escolha_de_sala` entry, `mode: form` and enum `["sala-fusca", "sala-mirante"]`. (R2)
+- [x] AC3: Changing one character of the `requestState` gives `-32602`. (R8)
+- [x] AC4: Restarting the server between `input_required` and the retry still completes the reservation. (R10)
+- [x] AC5: Starting without `REQUEST_STATE_SECRET`, or with a 16-byte value, exits non-zero with the guidance message. (R7)
+- [x] AC6: `grep -rn "REQUEST_STATE_SECRET" servidor-mcp` shows only environment reads, docs and tests that generate a random value. (R7)
+- [x] AC7: `decline` returns `reservado: false`, `motivo: "recusado"`, no `isError`, and the room stays free. (R9)
 
 ## Unit tests
 - T1: conflict returns the exact elicitation shape and enum order (AC2).
