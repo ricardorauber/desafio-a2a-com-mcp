@@ -4,7 +4,7 @@
 Give the agent an MCP client layer that talks to the MCP server over HTTP like a real client — runtime discovery, policy read, raw view of `input_required`, retry with a new id — and propagates the trace context, without any room business rule.
 
 ## Scope
-- In: `agente/agente/trace.py` (W3C `traceparent` parsing and child span generation), `agente/agente/host_mcp.py` (a long-lived SDK `Client` wrapper and the result types the A2A layer consumes).
+- In: `agente/agente_a2a/trace.py` (W3C `traceparent` parsing and child span generation), `agente/agente_a2a/host_mcp.py` (a long-lived SDK `Client` wrapper and the result types the A2A layer consumes).
 - Out: A2A server and Task handling (0006), the bridge between both (0007).
 
 ## Requirements

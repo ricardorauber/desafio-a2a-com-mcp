@@ -4,7 +4,7 @@
 Expose the room booking capability as an A2A v1.0 agent (JSON-RPC binding) with a public Agent Card, `SendMessage` and `GetTask`, and a Task state machine that ends in `COMPLETED` or `FAILED` for requests that need no choice.
 
 ## Scope
-- In: `agente/agente/cartao.py` (Agent Card), `agente/agente/pedido.py` (parsing of the fixed request text), `agente/agente/executor.py` (the `AgentExecutor`), `agente/agente/app.py` (Starlette app, request handler, task store, call-context builder), `agente/agente/__main__.py` (uvicorn startup).
+- In: `agente/agente_a2a/cartao.py` (Agent Card), `agente/agente_a2a/pedido.py` (parsing of the fixed request text), `agente/agente_a2a/executor.py` (the `AgentExecutor`), `agente/agente_a2a/app.py` (Starlette app, request handler, task store, call-context builder), `agente/agente_a2a/__main__.py` (uvicorn startup).
 - Out: pausing and resuming Tasks (0007), streaming, push notifications, authentication.
 
 ## Requirements

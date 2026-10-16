@@ -4,7 +4,7 @@
 Turn the MCP server's `input_required` into a paused A2A Task, keep the `requestState` bound to that Task inside the agent, and resume the original `tools/call` with a new id when the A2A client answers.
 
 ## Scope
-- In: `agente/agente/ponte.py` (per-Task paused state store) and the pause/resume branches of `agente/agente/executor.py`.
+- In: `agente/agente_a2a/ponte.py` (per-Task paused state store) and the pause/resume branches of `agente/agente_a2a/executor.py`.
 - Out: room rules (they stay in the MCP server), streaming, cross-Task references.
 
 ## Requirements
