@@ -20,12 +20,12 @@ Expose the room booking capability as an A2A v1.0 agent (JSON-RPC binding) with 
 - R10: The executor SHALL be deterministic: the same request against the same server state produces the same states and texts. No LLM SHALL be used.
 
 ## Acceptance criteria
-- [ ] AC1: `curl http://localhost:7300/.well-known/agent-card.json` matches the interface, protocol version and skill of `exemplos/wire/07-a2a-agent-card.json`; validator checks 21-23 pass. (R1)
-- [ ] AC2: Validator checks 24-26 and 35 pass. (R2-R7)
-- [ ] AC3: A Task's state sequence recorded by the store is `SUBMITTED → WORKING → COMPLETED` for a free room. (R4)
-- [ ] AC4: `SendMessage` on a completed Task returns a JSON-RPC `error` and `GetTask` still shows `COMPLETED`. (R9)
-- [ ] AC5: The FAILED Task for `sala-inexistente` shows `Sala inexistente: sala-inexistente` in `status.message` and in `history`. (R7, R8)
-- [ ] AC6: A malformed request ends `FAILED` with the `Pedido invalido` message. (R5)
+- [x] AC1: `curl http://localhost:7300/.well-known/agent-card.json` matches the interface, protocol version and skill of `exemplos/wire/07-a2a-agent-card.json`; validator checks 21-23 pass. (R1)
+- [x] AC2: Validator checks 24-26 and 35 pass. (R2-R7)
+- [x] AC3: A Task's state sequence recorded by the store is `SUBMITTED → WORKING → COMPLETED` for a free room. (R4)
+- [x] AC4: `SendMessage` on a completed Task returns a JSON-RPC `error` and `GetTask` still shows `COMPLETED`. (R9)
+- [x] AC5: The FAILED Task for `sala-inexistente` shows `Sala inexistente: sala-inexistente` in `status.message` and in `history`. (R7, R8)
+- [x] AC6: A malformed request ends `FAILED` with the `Pedido invalido` message. (R5)
 
 ## Unit tests
 - T1: card fields and JSON serialization (AC1).
