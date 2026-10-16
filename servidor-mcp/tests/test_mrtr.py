@@ -161,3 +161,32 @@ def test_startup_refuses_a_missing_or_short_secret(ambiente):
     )
     assert processo.returncode != 0
     assert "REQUEST_STATE_SECRET" in processo.stderr
+
+
+def test_replayed_accept_returns_the_first_reservation(mcp):
+    estado = pausar(mcp)["requestState"]
+    _, primeira = retomar(mcp, estado, aceitar("sala-fusca"))
+    _, repetida = retomar(mcp, estado, aceitar("sala-mirante"))
+    assert repetida["result"]["structuredContent"] == primeira["result"]["structuredContent"]
+    _, livre = mcp.ferramenta("consultar_disponibilidade", {"sala": "sala-mirante", "inicio": h("14:00"), "fim": h("15:00")})
+    assert livre["result"]["structuredContent"]["livre"] is True
+
+
+@pytest.mark.parametrize(
+    ("segredo", "aceito"),
+    [(secrets.token_hex(16), False), (secrets.token_hex(32), True), ("a" * 20 + "!", False), ("senha-longa-nao-hex-" * 2, True)],
+)
+def test_secret_needs_32_bytes_of_randomness(segredo, aceito):
+    if aceito:
+        seguranca_do_ambiente({"REQUEST_STATE_SECRET": segredo})
+    else:
+        with pytest.raises(SegredoInvalido):
+            seguranca_do_ambiente({"REQUEST_STATE_SECRET": segredo})
+
+
+def test_discover_does_not_advertise_subscriptions(mcp):
+    _, resposta = mcp.chamar("server/discover")
+    capacidades = resposta["result"]["capabilities"]
+    assert "tools" in capacidades and "resources" in capacidades
+    assert not capacidades["resources"].get("subscribe")
+    assert not any(c.get("listChanged") for c in capacidades.values() if isinstance(c, dict))

@@ -42,16 +42,26 @@ class ExecutorDeReservas(AgentExecutor):
         self._pausas = pausas or Pausas()
 
     async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
-        async with self._pausas.trava(context.task_id):
-            if context.current_task is None:
-                await event_queue.enqueue_event(new_task_from_user_message(context.message))
-                await self._iniciar(context, TaskUpdater(event_queue, context.task_id, context.context_id))
-            else:
-                await self._continuar(context, TaskUpdater(event_queue, context.task_id, context.context_id))
+        tarefa = TaskUpdater(event_queue, context.task_id, context.context_id)
+        if context.current_task is None:
+            await event_queue.enqueue_event(new_task_from_user_message(context.message))
+            await self._iniciar(context, tarefa)
+            return
+        try:
+            await self._continuar(context, tarefa)
+        finally:
+            # Claimed by the request-context builder before this continuation started.
+            self._pausas.liberar(context.task_id)
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
+        """Called by the SDK only while work is running for the Task (a paused Task is closed by the SDK itself).
+
+        Waiting for the running continuation keeps its MCP retry and the Task
+        outcome consistent; the SDK then stops the producer and marks the Task
+        CANCELED unless it already reached a terminal state.
+        """
+        await self._pausas.aguardar(context.task_id)
         self._pausas.descartar(context.task_id)
-        await TaskUpdater(event_queue, context.task_id, context.context_id).cancel()
 
     async def _iniciar(self, context: RequestContext, tarefa: TaskUpdater) -> None:
         await tarefa.start_work()

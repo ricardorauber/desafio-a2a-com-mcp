@@ -9,9 +9,9 @@ from agente_a2a.app import criar_app
 def a2a_com():
     clientes = []
 
-    def fabricar(*resultados):
+    def fabricar(*resultados, pausas=None):
         host = HostFalso(*resultados)
-        http = TestClient(criar_app(host, "http://127.0.0.1:7300"))
+        http = TestClient(criar_app(host, "http://127.0.0.1:7300", pausas))
         clientes.append(http)
         return ClienteA2A(http.__enter__()), host
 

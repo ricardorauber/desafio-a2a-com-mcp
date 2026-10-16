@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import secrets
 from typing import Any
 
 from mcp_types import (
@@ -24,7 +25,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from mcp.server.request_state import RequestStateSecurity
 from mcp.shared.exceptions import MCPError
 
-from servidor_mcp.dominio import ERRO_SEM_ALTERNATIVAS, Agenda, ErroDeDominio
+from servidor_mcp.dominio import ERRO_SEM_ALTERNATIVAS, Agenda, ErroDeDominio, Reserva
 from servidor_mcp.log import RegistroDeRequests
 
 NOME = "central-de-salas"
@@ -71,7 +72,9 @@ class ReservaOut(BaseModel):
 
 
 def criar_servidor(agenda: Agenda, seguranca: RequestStateSecurity | None = None) -> MCPServer:
-    mcp = MCPServer(NOME, version=VERSAO, request_state_security=seguranca)
+    # Subscriptions are out of scope: without `subscriptions/listen` the server
+    # advertises neither `resources.subscribe` nor `listChanged`.
+    mcp = MCPServer(NOME, version=VERSAO, request_state_security=seguranca, subscriptions=False)
 
     def validar(sala: str, inicio: str, fim: str):
         try:
@@ -94,8 +97,10 @@ def criar_servidor(agenda: Agenda, seguranca: RequestStateSecurity | None = None
             conflitos=[ConflitoOut(id=r.id, inicio=r.inicio, fim=r.fim, responsavel=r.responsavel) for r in conflitos],
         )
 
-    def concluir(sala: str, inicio: str, fim: str, responsavel: str) -> ReservaOut:
-        reserva = agenda.reservar(sala, inicio, fim, responsavel)
+    def concluir(sala: str, inicio: str, fim: str, responsavel: str, origem: str | None = None) -> ReservaOut:
+        return saida(agenda.reservar(sala, inicio, fim, responsavel, origem))
+
+    def saida(reserva: Reserva) -> ReservaOut:
         return ReservaOut(
             reserva=reserva.id,
             sala=reserva.sala,
@@ -105,7 +110,9 @@ def criar_servidor(agenda: Agenda, seguranca: RequestStateSecurity | None = None
             politica=agenda.versao_politica,
         )
 
-    def perguntar(pedido: dict[str, str], alternativas: list[str], ctx: Context) -> InputRequiredResult:
+    def perguntar(
+        pedido: dict[str, str], alternativas: list[str], ctx: Context, nonce: str | None = None
+    ) -> InputRequiredResult:
         """End this round asking the client to pick an alternative; the whole request travels in the state."""
         if not alternativas:
             raise ToolError(ERRO_SEM_ALTERNATIVAS)
@@ -122,7 +129,13 @@ def criar_servidor(agenda: Agenda, seguranca: RequestStateSecurity | None = None
             },
             "required": ["sala"],
         }
-        estado = {"pedido": pedido, "alternativas": alternativas, "chave": CHAVE_ESCOLHA}
+        # The nonce names this request across rounds, so a replayed accept cannot book twice.
+        estado = {
+            "pedido": pedido,
+            "alternativas": alternativas,
+            "chave": CHAVE_ESCOLHA,
+            "nonce": nonce or secrets.token_hex(16),
+        }
         return InputRequiredResult(
             input_requests={
                 CHAVE_ESCOLHA: ElicitRequest(params=ElicitRequestFormParams(message=PERGUNTA, requested_schema=esquema))
@@ -133,19 +146,22 @@ def criar_servidor(agenda: Agenda, seguranca: RequestStateSecurity | None = None
 
     def retomar(estado: dict[str, Any], ctx: Context) -> ReservaOut | InputRequiredResult:
         """Finish a request rebuilt from the verified state; the re-sent arguments are never used."""
-        pedido, alternativas = estado["pedido"], estado["alternativas"]
+        pedido, alternativas, nonce = estado["pedido"], estado["alternativas"], estado["nonce"]
         resposta = (ctx.input_responses or {}).get(estado["chave"])
         if not isinstance(resposta, ElicitResult):
-            return perguntar(pedido, alternativas, ctx)
+            return perguntar(pedido, alternativas, ctx, nonce)
         if resposta.action in MOTIVOS_DE_RECUSA:
             return ReservaOut(reservado=False, motivo=MOTIVOS_DE_RECUSA[resposta.action])
+        ja_reservada = agenda.reserva_da_origem(nonce)
+        if ja_reservada is not None:
+            return saida(ja_reservada)
         escolhida = (resposta.content or {}).get("sala")
         if escolhida not in alternativas:
-            return perguntar(pedido, alternativas, ctx)
+            return perguntar(pedido, alternativas, ctx, nonce)
         intervalo = validar(escolhida, pedido["inicio"], pedido["fim"])
         if agenda.conflitos(escolhida, intervalo):
-            return perguntar(pedido, agenda.alternativas(pedido["sala"], intervalo), ctx)
-        return concluir(escolhida, pedido["inicio"], pedido["fim"], pedido["responsavel"])
+            return perguntar(pedido, agenda.alternativas(pedido["sala"], intervalo), ctx, nonce)
+        return concluir(escolhida, pedido["inicio"], pedido["fim"], pedido["responsavel"], nonce)
 
     @mcp.tool(description="Reserva uma sala. Se o intervalo estiver ocupado, pergunta qual alternativa usar.")
     def reservar_sala(

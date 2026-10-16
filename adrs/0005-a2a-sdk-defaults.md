@@ -19,3 +19,6 @@ Spikes with `a2a-sdk` 1.2.2 showed three behaviors that conflict with the valida
 
 ## Consequences
 All four are small, local adapters around public extension points; the README lists them as SDK findings.
+
+## Addendum (spec 0009)
+`CancelTask` in `a2a-sdk` 1.2.2 (`ActiveTask.cancel`) always stops a running producer, and marks the Task FAILED when `AgentExecutor.cancel` raises; for a paused Task it writes CANCELED without calling the executor. So the executor's `cancel` never refuses: it waits for a running continuation to finish (its MCP retry and the Task outcome stay consistent), and the task store drops the paused state whenever a Task turns terminal. Continuations are claimed atomically in the request-context builder, so a second concurrent one is refused with `-32004`.

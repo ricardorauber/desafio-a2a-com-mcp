@@ -89,6 +89,7 @@ class Agenda:
         self.versao_politica = versao_da_politica(politica)
         numeros = [int(r.id.removeprefix("res-")) for r in reservas if r.id.removeprefix("res-").isdigit()]
         self._proximo = max(numeros, default=0) + 1
+        self._por_origem: dict[str, Reserva] = {}
 
     @classmethod
     def carregar(cls, dados: Path = DADOS) -> Agenda:
@@ -137,12 +138,18 @@ class Agenda:
         livres = [s.id for s in candidatas if not self.conflitos(s.id, intervalo)]
         return livres[:MAXIMO_ALTERNATIVAS]
 
-    def reservar(self, sala: str, inicio: str, fim: str, responsavel: str) -> Reserva:
-        """Create a reservation for a valid, free interval."""
+    def reserva_da_origem(self, origem: str) -> Reserva | None:
+        """The reservation already created for this request origin, if any."""
+        return self._por_origem.get(origem)
+
+    def reservar(self, sala: str, inicio: str, fim: str, responsavel: str, origem: str | None = None) -> Reserva:
+        """Create a reservation for a valid, free interval; `origem` makes a repeated request idempotent."""
         intervalo = self.validar(sala, inicio, fim)
         if self.conflitos(sala, intervalo):
             raise ValueError(f"{sala} is not free in the requested interval")
         reserva = Reserva(f"res-{self._proximo:04d}", sala, inicio, fim, responsavel)
         self._proximo += 1
         self._reservas.append(reserva)
+        if origem is not None:
+            self._por_origem[origem] = reserva
         return reserva

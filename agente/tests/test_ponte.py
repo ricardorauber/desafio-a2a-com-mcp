@@ -1,4 +1,3 @@
-import asyncio
 import json
 
 import pytest
@@ -127,18 +126,12 @@ def test_store_is_emptied_on_terminal_states():
     assert pausas.obter("t") is None
 
 
-async def test_lock_serializes_continuations_of_one_task():
+def test_claim_admits_one_continuation_at_a_time():
     pausas = Pausas()
-    ordem = []
-
-    async def trabalho(n):
-        async with pausas.trava("t"):
-            ordem.append(("inicio", n))
-            await asyncio.sleep(0.01)
-            ordem.append(("fim", n))
-
-    await asyncio.gather(trabalho(1), trabalho(2))
-    assert ordem == [("inicio", 1), ("fim", 1), ("inicio", 2), ("fim", 2)]
+    assert pausas.reivindicar("t") is True
+    assert pausas.reivindicar("t") is False
+    pausas.liberar("t")
+    assert pausas.reivindicar("t") is True
 
 
 def test_request_state_never_reaches_the_a2a_client(a2a_com):

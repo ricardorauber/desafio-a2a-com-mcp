@@ -18,6 +18,7 @@ from starlette.requests import Request
 from agente_a2a.cartao import CAMINHO_A2A, criar_cartao
 from agente_a2a.executor import ExecutorDeReservas
 from agente_a2a.host_mcp import HostMCP
+from agente_a2a.ponte import Pausas
 
 VERSAO_A2A = "1.0"
 
@@ -32,16 +33,19 @@ class ContextoComVersaoPadrao(DefaultServerCallContextBuilder):
 
 
 class ContinuacaoHerdaContexto(SimpleRequestContextBuilder):
-    """Continuations: refuse a terminal Task up front, and keep the Task's `contextId`.
+    """Continuations: only a Task waiting for input accepts one, and it keeps the Task's `contextId`.
 
     The SDK also refuses terminal Tasks, but only after spinning up an active
     task whose event dispatcher is then left pending; checking here, before
-    that, gives the same -32004 error without the leak.
+    that, gives the same -32004 error without the leak. A Task still working
+    (another continuation in flight) is refused the same way: the continuation
+    is claimed here, atomically, and released by the executor when it ends.
     """
 
-    def __init__(self, tarefas: TaskStore) -> None:
+    def __init__(self, tarefas: TaskStore, pausas: Pausas) -> None:
         super().__init__(should_populate_referred_tasks=False, task_store=tarefas)
         self._tarefas = tarefas
+        self._pausas = pausas
 
     async def build(self, context: ServerCallContext, params: Any = None, task_id: str | None = None,
                     context_id: str | None = None, task: Task | None = None) -> RequestContext:
@@ -49,6 +53,12 @@ class ContinuacaoHerdaContexto(SimpleRequestContextBuilder):
         if existente is not None and existente.status.state in TERMINAL_TASK_STATES:
             estado = TaskState.Name(existente.status.state)
             raise UnsupportedOperationError(message=f"Task {task_id} is in terminal state: {estado}")
+        if params is not None and existente is not None and (
+            existente.status.state != TaskState.TASK_STATE_INPUT_REQUIRED
+            or self._pausas.obter(task_id) is None
+            or not self._pausas.reivindicar(task_id)
+        ):
+            raise UnsupportedOperationError(message=f"Task {task_id} is not waiting for input")
         if params is not None and existente is not None and not context_id:
             context_id = existente.context_id
             params.message.context_id = context_id
@@ -77,7 +87,15 @@ def com_historico_completo(task: Task) -> Task:
 
 
 class TarefasComHistoricoCompleto(InMemoryTaskStore):
+    """In-memory Tasks with complete history; a Task that turns terminal drops its paused state."""
+
+    def __init__(self, pausas: Pausas) -> None:
+        super().__init__()
+        self._pausas = pausas
+
     async def save(self, task: Task, context: ServerCallContext) -> None:
+        if task.status.state in TERMINAL_TASK_STATES:
+            self._pausas.descartar(task.id)
         await super().save(com_historico_completo(task), context)
 
 
@@ -89,14 +107,15 @@ class TratadorComHistoricoCompleto(DefaultRequestHandler):
         return com_historico_completo(resultado) if isinstance(resultado, Task) else resultado
 
 
-def criar_app(host: HostMCP, url_publica: str) -> Starlette:
+def criar_app(host: HostMCP, url_publica: str, pausas: Pausas | None = None) -> Starlette:
     cartao = criar_cartao(url_publica)
-    tarefas = TarefasComHistoricoCompleto()
+    pausas = pausas if pausas is not None else Pausas()
+    tarefas = TarefasComHistoricoCompleto(pausas)
     tratador = TratadorComHistoricoCompleto(
-        agent_executor=ExecutorDeReservas(host),
+        agent_executor=ExecutorDeReservas(host, pausas),
         task_store=tarefas,
         agent_card=cartao,
-        request_context_builder=ContinuacaoHerdaContexto(tarefas),
+        request_context_builder=ContinuacaoHerdaContexto(tarefas, pausas),
     )
     rotas = create_agent_card_routes(cartao) + create_jsonrpc_routes(
         tratador, rpc_url=CAMINHO_A2A, context_builder=ContextoComVersaoPadrao()

@@ -35,14 +35,31 @@ def interpretar_escolha(texto: str) -> str | None:
 
 
 class Pausas:
-    """Per-Task paused state, plus one lock per Task so continuations run one at a time."""
+    """Per-Task paused state, plus a claim so only one continuation acts on a Task at a time.
+
+    Claims are taken synchronously on the event loop, so check-and-claim is atomic.
+    """
 
     def __init__(self) -> None:
         self._pausadas: dict[str, TarefaPausada] = {}
-        self._travas: dict[str, asyncio.Lock] = {}
+        self._em_andamento: dict[str, asyncio.Event] = {}
 
-    def trava(self, task_id: str) -> asyncio.Lock:
-        return self._travas.setdefault(task_id, asyncio.Lock())
+    def reivindicar(self, task_id: str) -> bool:
+        if task_id in self._em_andamento:
+            return False
+        self._em_andamento[task_id] = asyncio.Event()
+        return True
+
+    def liberar(self, task_id: str) -> None:
+        fim = self._em_andamento.pop(task_id, None)
+        if fim is not None:
+            fim.set()
+
+    async def aguardar(self, task_id: str) -> None:
+        """Wait for the continuation of this Task that is running, if any."""
+        fim = self._em_andamento.get(task_id)
+        if fim is not None:
+            await fim.wait()
 
     def guardar(self, task_id: str, pausa: TarefaPausada) -> None:
         self._pausadas[task_id] = pausa
@@ -52,4 +69,3 @@ class Pausas:
 
     def descartar(self, task_id: str) -> None:
         self._pausadas.pop(task_id, None)
-        self._travas.pop(task_id, None)
